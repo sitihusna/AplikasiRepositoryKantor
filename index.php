@@ -1,4 +1,131 @@
+<?php
+//koneksi database
+$server = "localhost:3307";
+$user = "root";
+$password = "";
+$database = "db_inventoriskantor";
 
+  //buat koneksi
+  $koneksi = mysqli_connect($server, $user, $password, $database) or die(mysqli_error($koneksi));
+
+  //kode otomatis
+  $q = mysqli_query($koneksi, "SELECT kode FROM tbarang order by kode desc limit 1");
+  $datax = mysqli_fetch_array($q);
+  if($datax){
+    $no_terakhir = substr($datax['kode'], -3);
+    $no = $no_terakhir + 1;
+
+    if ($no > 0 and $no < 10){
+      $kode = "00".$no;
+    } else if ($no > 10 and $no < 100){
+      $kode = "0". $no;
+    } else if ($no > 100){
+      $kode = $no;
+    }
+  } else {
+    $kode = "001";
+  }
+  $tahun = date('Y');
+  $vkode = "INV-" . $tahun . '-' . $kode;
+  //inv-2022-001
+
+
+  //jika tombol simpan diklik
+  if(isset($_POST['bsimpan'])){
+
+    //pengujian apakah data akan diedit atau disimpan baru
+    if(isset($_GET['hal']) == "edit"){
+      //data akan diedit
+      $edit = mysqli_query($koneksi, "UPDATE tbarang SET
+                                              nama = '$_POST[tnama]',
+                                              asal = '$_POST[tasal]',
+                                              jumlah = '$_POST[tjumlah]',
+                                              satuan = '$_POST[tsatuan]',
+                                              tanggal_diterima = '$_POST[ttanggal_diterima]'
+                                      WHERE id_barang = '$_GET[id]'
+                                      ");
+    //uji jika edit data sukses
+    if($edit){
+      echo "<script>
+            alert('Edit Data Sukses!');
+            document.location='index.php';
+            </script>";
+    } else {
+      echo "<script>
+            alert('Edit Data Gagal!');
+            document.location='index.php';
+            </script>";
+    }
+    } else {
+      //Data akan disimpan baru
+      $simpan = mysqli_query($koneksi, "INSERT INTO tbarang (kode, nama, asal, jumlah, satuan, tanggal_diterima)
+                                          VALUE ('$_POST[tkode]',
+                                                  '$_POST[tnama]',
+                                                  '$_POST[tasal]',
+                                                  '$_POST[tjumlah]',
+                                                  '$_POST[tsatuan]',
+                                                  '$_POST[ttanggal_diterima]' )
+                                          ");
+  //uji jika simpan data sukses
+  if($simpan){
+    echo "<script>
+          alert('Simpan Data Sukses!');
+          document.location='index.php';
+          </script>";
+  } else {
+    echo "<script>
+          alert('Simpan Data Gagal!');
+          document.location='index.php';
+          </script>";
+    }
+  }
+}
+    
+  //deklarasi variabel untuk menampung data yang akan diedit
+  
+  $vnama = "";
+  $vasal = "";
+  $vjumlah = "";
+  $vsatuan = "";
+  $vtanggal_diterima = "";
+
+  //pengujian jika tombol edit atau hapus diklik
+  if(isset($_GET['hal'])){
+
+    //pengujian jika edit data
+    if($_GET['hal'] == "edit"){
+
+      //tampilkan data yang mau diedit
+      $tampil = mysqli_query($koneksi, "SELECT * FROM tbarang WHERE id_barang = '$_GET[id]'");
+      $data =mysqli_fetch_array($tampil);
+      if($data){
+        //jika data ditemukan, maka data ditampung ke dalam variabel
+        $vkode = $data['kode'];
+        $vnama = $data['nama'];
+        $vasal = $data['asal'];
+        $vjumlah = $data['jumlah'];
+        $vsatuan = $data['satuan'];
+        $vtanggal_diterima = $data['tanggal_diterima'];
+      }
+    } else if ($_GET['hal'] == "hapus") {
+      //persiapan hapus data sukses
+      $hapus = mysqli_query($koneksi, "DELETE FROM tbarang WHERE id_barang = '$_GET[id]'");
+      if($hapus){
+        echo "<script>
+              alert('Hapus Data Sukses!');
+              document.location='index.php';
+              </script>";
+      } else {
+        echo "<script>
+              alert('Hapus Data Gagal!');
+              document.location='index.php';
+              </script>";
+        }
+    }
+  }
+
+
+?>
 
 <!doctype html>
 <html lang="en">
@@ -26,18 +153,18 @@
                   <form method="POST">
                   <div class="mb-3">
                         <label for="exampleFormControlInput1" class="form-label">Kode Barang</label>
-                        <input type="text" name="tkode" class="form-control"  placeholder="Masukkan Kode Barang">
+                        <input type="text" name="tkode" value="<?=$vkode ?>" class="form-control"  placeholder="Masukkan Kode Barang">
                       </div>
 
                   <div class="mb-3">
                         <label for="exampleFormControlInput1" class="form-label">Nama Barang</label>
-                        <input type="text" name="tnama" class="form-control"  placeholder="Masukkan Nama Barang">
+                        <input type="text" name="tnama" value="<?=$vnama ?>" class="form-control"  placeholder="Masukkan Nama Barang">
                       </div>
 
                   <div class="mb-3">
-                        <label class="form-label">Satuan</label>
-                          <select class="form-select" name="tsatuan">
-                            <option selected>-pilih-</option>
+                        <label class="form-label">Asal Barang</label>
+                          <select class="form-select" name="tasal">
+                            <option value=<?= $vasal ?>"><?=$vasal ?></option>
                             <option value="Pembelian">Pembelian</option>
                             <option value="Hibah">Hibah</option>
                             <option value="Bantuan">Bantuan</option>
@@ -49,19 +176,19 @@
                     <div class="col">
                       <div class="mb-3">
                           <label for="exampleFormControlInput1" class="form-label">Jumlah</label>
-                          <input type="number" name="tjumlah" class="form-control" placeholder="Masukkan Jumlah Barang">
+                          <input type="number" name="tjumlah" value="<?=$vjumlah ?>" class="form-control" placeholder="Masukkan Jumlah Barang">
                         </div>
                         </div>
 
                     <div class="col">
                       <div class="mb-3">
-                        <label class="form-label">Asal Barang</label>
-                          <select class="form-select" name="tasal">
-                            <option selected>-pilih-</option>
-                            <option value="Pembelian">Pembelian</option>
-                            <option value="Hibah">Hibah</option>
-                            <option value="Bantuan">Bantuan</option>
-                            <option value="Sumbangan">Sumbangan</option>
+                        <label class="form-label">Satuan</label>
+                          <select class="form-select" name="tsatuan">
+                            <option value=<?= $vsatuan ?>"><?=$vsatuan ?></option>
+                            <option value="Unit">Unit</option>
+                            <option value="Kotak">Kotak</option>
+                            <option value="Pcs">Pcs</option>
+                            <option value="Pak">Pak</option>
                           </select>
                       </div>
                     </div>
@@ -69,7 +196,7 @@
                     <div class="col">
                       <div class="mb-3">
                           <label for="exampleFormControlInput1" class="form-label">Tanggal Diterima</label>
-                          <input type="date" name="ttanggal_diterima" class="form-control" placeholder="Masukkan Jumlah Barang">
+                          <input type="date" name="ttanggal_diterima" value="<?=$vtanggal_diterima ?>" class="form-control" placeholder="Masukkan Jumlah Barang">
                         </div>
                         </div>
 
@@ -104,7 +231,7 @@
                   <div class="cl-md-6 mx-auto">
                     <form method="POST">
                       <div class="input-group mb-3">
-                        <input type="text" name="tcari" class="form-control"placeholder="Masukkan Kata Kunci">
+                        <input type="text" name="tcari" value="<?= @$_POST['tcari'] ?>" class="form-control" placeholder="Masukkan Kata Kunci">
                         <button class="btn btn-primary name="bcari" type="submit">Cari</button>
                         <button class="btn btn-danger name="breset" type="submit">Reset</button>
                       </div>
@@ -122,18 +249,44 @@
                       <th>Aksi</th>
                     </tr>
 
+                    <?php
+                    //persiapan menampilkan data
+                    $no = 1;
+
+                    //untuk pencarian data
+                    //jika tombol cari diklik
+                    if(isset($_POST['bcari'])) {
+                      //tampilkan data yang dicari
+                      $keyword = $_POST['tcari'];
+                      $q = "SELECT * FROM tbarang WHERE kode like '%$keyword%' or nama like '%$keyword%' or asal like '%$keyword%' order by
+                      id_barang desc ";
+                    } else {
+                      $q = "SELECT * FROM tbarang order by id_barang desc";
+                    }
+
+                    $tampil = mysqli_query($koneksi, $q);
+                    while($data = mysqli_fetch_array($tampil)) :
+
+                    ?>
+
                     <tr>
-                      <td>1</td>
-                      <td>INV-2022-001</td>
-                      <td>Printer Epson</td>
-                      <td>Pembelian</td>
-                      <td>1</td>
-                      <td>2022-06-01</td>
+                      <td><?=$no++ ?></td>
+                      <td><?=$data['kode'] ?></td>
+                      <td><?=$data['nama'] ?></td>
+                      <td><?=$data['asal'] ?></td>
+                      <td><?=$data['jumlah'] ?> <?=$data['satuan'] ?></td>
+                      <td><?=$data['tanggal_diterima'] ?></td>
+                      
                       <td>
-                        <a href="#"class="btn btn-warning">Edit</a>
-                        <a href="#"class="btn btn-danger">Hapus</a>
+                        <a href="index.php?hal=edit&id=<?= $data['id_barang'] ?>" class="btn btn-warning">Edit</a>
+
+                        <a href="index.php?hal=hapus&id=<?= $data['id_barang'] ?>"class="btn btn-danger" 
+                        onclick="return confirm('Apakah anda Yakin akan Hapus Data ini')" >Hapus</a>
                       </td>
                     </tr>
+
+                    <?php endwhile?>
+
                   </table>
                 </div>
                 <div class="card-footer bg-info">
